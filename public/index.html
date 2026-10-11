@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Education AI Chatbot</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #e4e9f2;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .chat-container {
+            background: #ffffff;
+            width: 480px;
+            height: 550px;
+            border-radius: 12px;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #222;
+            font-size: 20px;
+        }
+
+        #chat-box {
+            background: #fdfdfd;
+            border: 1px solid #e1e1e1;
+            border-radius: 8px;
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        #chat-form {
+            display: flex;
+            gap: 10px;
+        }
+
+        #user-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #ccc;
+            border-radius: 24px;
+            outline: none;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        #user-input:focus {
+            border-color: #007bff;
+        }
+
+        button[type="submit"] {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 0 20px;
+            border-radius: 24px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+
+        button[type="submit"]:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+
+        button[type="submit"]:disabled {
+            background-color: #b0c4de;
+            cursor: not-allowed;
+        }
+
+        .message {
+            padding: 10px 14px;
+            border-radius: 10px;
+            max-width: 80%;
+            word-wrap: break-word;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .message.user {
+            background-color: #d1e7dd;
+            color: #0f5132;
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+
+        .message.model {
+            background-color: #f8d7da;
+            color: #842029;
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="chat-container">
+        <h2>Education AI Chatbot</h2>
+        
+        <div id="chat-box"></div>
+
+        <form id="chat-form">
+            <input type="text" id="user-input" placeholder="Type your message..." required autocomplete="off">
+            <button type="submit" id="send-button">Send</button>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const chatForm = document.getElementById('chat-form');
+            const userInput = document.getElementById('user-input');
+            const chatBox = document.getElementById('chat-box');
+            const sendButton = document.getElementById('send-button');
+
+            const conversation = [];
+
+            function appendMessage(role, text) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${role}`;
+                messageDiv.textContent = text;
+                chatBox.appendChild(messageDiv);
+                chatBox.scrollTo({
+                    top: chatBox.scrollHeight,
+                    behavior: 'smooth'
+                });
+                return messageDiv;
+            }
+
+            chatForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const messageText = userInput.value.trim();
+                if (!messageText) return;
+
+                // Set State Loading
+                userInput.value = '';
+                userInput.disabled = true;
+                sendButton.disabled = true;
+
+                // Tambahkan pesan user
+                appendMessage('user', messageText);
+                conversation.push({ role: 'user', text: messageText });
+
+                // Placeholder loading AI
+                const thinkingDiv = appendMessage('model', 'Gemini is thinking...');
+
+                try {
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ conversation })
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || `Server error: ${response.status}`);
+                    }
+
+                    if (data && typeof data.result === 'string') {
+                        thinkingDiv.textContent = data.result;
+                        conversation.push({ role: 'model', text: data.result });
+                    } else {
+                        thinkingDiv.textContent = 'Sorry, no response received.';
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    thinkingDiv.textContent = 'Failed to get response from server.';
+                    conversation.pop(); // Hapus pesan terakhir user jika gagal total
+                } finally {
+                    userInput.disabled = false;
+                    sendButton.disabled = false;
+                    userInput.focus();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
